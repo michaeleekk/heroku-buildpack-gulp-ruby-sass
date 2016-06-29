@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -e            # fail fast
+set -o pipefail   # don't ignore exit codes when piping output
+# set -x          # enable debugging
+
+build_dir=$1
+cache_dir=$2
+env_dir=$3
+bp_dir=$(cd $(dirname $0); cd ..; pwd)
+
+# Fix leak
+unset GIT_DIR
+
+# Install Sass through RubyGems
+echo "-----> Installing Sass (Ruby) gem"
+export GEM_HOME=$build_dir/.gem/ruby/1.9.1
+PATH="$GEM_HOME/bin:$PATH"
+
+if test -d $cache_dir/ruby/.gem; then
+  echo "-----> Restoring ruby gems directory from cache"
+  cp -r $cache_dir/ruby/.gem $build_dir
+  HOME=$build_dir gem update sass --user-install --no-rdoc --no-ri
+else
+  HOME=$build_dir gem install sass --user-install --no-rdoc --no-ri
+fi
+
+# Cache Sass gem
+
+# Clear cache dir, then prepare for a fresh cache
+rm -rf $cache_dir/ruby
+mkdir -p $cache_dir/ruby
+
+# If app has a gems directory, cache it.
+if test -d $build_dir/.gem; then
+  echo "-----> Caching Ruby gems directory for future builds"
+  cp -r $build_dir/.gem $cache_dir/ruby
+fi
+
+cd $build_dir
